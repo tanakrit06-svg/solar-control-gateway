@@ -1,4 +1,4 @@
-name: control-fillpump
+name: control-smartt
 
 on:
   repository_dispatch:
