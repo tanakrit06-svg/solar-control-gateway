@@ -1,8 +1,8 @@
 name: ewelink-control
 
-on:
-  repository_dispatch:
-    types: [solar_on, solar_off]
+#on:
+  #repository_dispatch:
+    #types: [solar_on, solar_off]
 
 jobs:
   send_to_ifttt:
