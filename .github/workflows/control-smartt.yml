@@ -1,0 +1,44 @@
+name: control-smartthings
+
+on:
+  repository_dispatch:
+    types: [solar_on, solar_off]
+
+jobs:
+  control_device:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ตั้งค่า EVENT_TYPE
+        run: echo "EVENT_TYPE=${{ github.event.action }}" >> $GITHUB_ENV
+
+      - name: สั่งงาน SmartThings
+        run: |
+          if [ "$EVENT_TYPE" = "solar_on" ]; then
+            curl -X POST "https://api.smartthings.com/v1/devices/73090a52-720b-4214-a9bc-2f546d0db51a/commands" \
+              -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }'
+          fi
+
+          if [ "$EVENT_TYPE" = "solar_off" ]; then
+            curl -X POST "https://api.smartthings.com/v1/devices/73090a52-720b-4214-a9bc-2f546d0db51a/commands" \
+              -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "off"
+                      }
+                    ]
+                  }'
