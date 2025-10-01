@@ -1,1 +1,14 @@
+name: send-to-form-a
 
+on:
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ส่งข้อมูลไปยัง Google Form A
+        run: |
+          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
+            -d "entry.1561980421=solar_on" \
+            -d "entry.1715493103=ESP"
