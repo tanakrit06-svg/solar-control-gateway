@@ -9,15 +9,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ตั้งค่า EVENT_TYPE เป็น environment variable
-        env:
-          EVENT_TYPE: ${{ github.event.action }}
-        run: |
-          echo "Event type received: $EVENT_TYPE"
+      - name: ตั้งค่า EVENT_TYPE
+        run: echo "EVENT_TYPE=${{ github.event.action }}" >> $GITHUB_ENV
 
       - name: ส่งข้อมูลไปยัง Google Form ตามคำสั่ง
-        env:
-          EVENT_TYPE: ${{ github.event.action }}
         run: |
           if [ "$EVENT_TYPE" = "solar_on" ]; then
             curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdf_K9EN_B9CEMTtxbyQ8K5R8n1z3f3956wFQk9Jm5n2dK3Wg/formResponse \
@@ -28,4 +23,3 @@ jobs:
             curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdf_K9EN_B9CEMTtxbyQ8K5R8n1z3f3956wFQk9Jm5n2dK3Wg/formResponse \
               -d "entry.1457809611=off"
           fi
-
