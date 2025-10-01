@@ -8,10 +8,10 @@ jobs:
   send_to_ifttt:
     runs-on: ubuntu-latest
 
-    env:
-      EVENT_TYPE: ${{ github.event.action }}
-
     steps:
+      - name: ตั้งค่า EVENT_TYPE
+        run: echo "EVENT_TYPE=${{ github.event.action }}" >> $GITHUB_ENV
+
       - name: ตรวจคำสั่งที่ได้รับ
         run: echo "Event type received: $EVENT_TYPE"
 
