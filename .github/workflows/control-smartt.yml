@@ -1,22 +1,26 @@
-name: control-smartthings
+name: control-fillpump
 
 on:
- repository_dispatch:
-  types: [solar_on, solar_off]
+  repository_dispatch:
+    types: [solar_on, solar_off]
 
 jobs:
   control_device:
     runs-on: ubuntu-latest
 
+    env:
+      SMARTTHINGS_TOKEN: ${{ secrets.SMARTTHINGS_TOKEN }}
+
     steps:
       - name: ตั้งค่า EVENT_TYPE
         run: echo "EVENT_TYPE=${{ github.event.action }}" >> $GITHUB_ENV
 
-      - name: สั่งงาน SmartThings
+      - name: สั่งงาน FillPump ผ่าน SmartThings
         run: |
           if [ "$EVENT_TYPE" = "solar_on" ]; then
+            echo "เปิด FillPump ผ่าน SmartThings"
             curl -X POST "https://api.smartthings.com/v1/devices/74b5a597-3444-4f9d-b879-cca0de01c7ad/commands" \
-              -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
+              -H "Authorization: Bearer $SMARTTHINGS_TOKEN" \
               -H "Content-Type: application/json" \
               -d '{
                     "commands": [
@@ -27,11 +31,10 @@ jobs:
                       }
                     ]
                   }'
-          fi
-
-          if [ "$EVENT_TYPE" = "solar_off" ]; then
+          elif [ "$EVENT_TYPE" = "solar_off" ]; then
+            echo "ปิด FillPump ผ่าน SmartThings"
             curl -X POST "https://api.smartthings.com/v1/devices/74b5a597-3444-4f9d-b879-cca0de01c7ad/commands" \
-              -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
+              -H "Authorization: Bearer $SMARTTHINGS_TOKEN" \
               -H "Content-Type: application/json" \
               -d '{
                     "commands": [
@@ -42,3 +45,6 @@ jobs:
                       }
                     ]
                   }'
+          else
+            echo "EVENT_TYPE ไม่ตรงกับ solar_on หรือ solar_off"
+          fi
