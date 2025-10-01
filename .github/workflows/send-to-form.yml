@@ -1,0 +1,13 @@
+name: Submit to Google Form
+
+on:
+  repository_dispatch:
+    types: [solar_on, solar_off]
+
+jobs:
+  submit-form:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit Google Form
+        run: |
+          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSc9asPeR_xC3-stBX1OrMKx_rmYBDOL-rhx4mep71EvdktKgg/formResponse?entry.1131282568=solar_on&entry.1829867408=GitHub"
