@@ -15,7 +15,7 @@ jobs:
       - name: สั่งงาน SmartThings
         run: |
           if [ "$EVENT_TYPE" = "solar_on" ]; then
-            curl -X POST "https://api.smartthings.com/v1/devices/73090a52-720b-4214-a9bc-2f546d0db51a/commands" \
+            curl -X POST "https://api.smartthings.com/v1/devices/74b5a597-3444-4f9d-b879-cca0de01c7ad/commands" \
               -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
               -H "Content-Type: application/json" \
               -d '{
@@ -30,7 +30,7 @@ jobs:
           fi
 
           if [ "$EVENT_TYPE" = "solar_off" ]; then
-            curl -X POST "https://api.smartthings.com/v1/devices/73090a52-720b-4214-a9bc-2f546d0db51a/commands" \
+            curl -X POST "https://api.smartthings.com/v1/devices/74b5a597-3444-4f9d-b879-cca0de01c7ad/commands" \
               -H "Authorization: Bearer ${{ secrets.SMARTTHINGS_TOKEN }}" \
               -H "Content-Type: application/json" \
               -d '{
