@@ -1,8 +1,8 @@
 name: control-smartthings
 
-#on:
- #repository_dispatch:
-  #types: [solar_on, solar_off]
+on:
+ repository_dispatch:
+  types: [solar_on, solar_off]
 
 jobs:
   control_device:
