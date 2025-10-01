@@ -8,20 +8,21 @@ jobs:
   send_to_ifttt:
     runs-on: ubuntu-latest
 
+    env:
+      EVENT_TYPE: ${{ github.event.action }}
+
     steps:
       - name: ตรวจคำสั่งที่ได้รับ
-        run: echo "Event type received: ${{ github.event.action }}"
+        run: echo "Event type received: $EVENT_TYPE"
 
-      - name: ส่ง solar_on ไปยัง Google Form A
-        if: ${{ github.event.action == 'solar_on' }}
+      - name: ส่งข้อมูลไปยัง Google Form ตามคำสั่ง
         run: |
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
-            -d "entry.1561980421=solar_on" \
-            -d "entry.1715493103=ESP"
-
-      - name: ส่ง solar_off ไปยัง Google Form B
-        if: ${{ github.event.action == 'solar_off' }}
-        run: |
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdGHk7v1b9RX2GeKl0w_BSDcmTtbxtyK0F3595fcpqQagLxEQ/formResponse \
-            -d "entry.1686318127=solar_off" \
-            -d "entry.1457056019=ESP"
+          if [ "$EVENT_TYPE" = "solar_on" ]; then
+            curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
+              -d "entry.1561980421=solar_on" \
+              -d "entry.1715493103=ESP";
+          elif [ "$EVENT_TYPE" = "solar_off" ]; then
+            curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdGHk7v1b9RX2GeKl0w_BSDcmTtbxtyK0F3595fcpqQagLxEQ/formResponse \
+              -d "entry.1686318127=solar_off" \
+              -d "entry.1457056019=ESP";
+          fi
