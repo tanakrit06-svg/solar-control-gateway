@@ -19,6 +19,6 @@ jobs:
       # ส่งข้อมูลไป Google Form
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
         run: |
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
+          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse \
             -d "entry.1012650439=${{ github.event.client_payload.soc }}" \
             --fail --silent --show-error
