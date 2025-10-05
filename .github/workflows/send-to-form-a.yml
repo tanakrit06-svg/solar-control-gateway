@@ -11,6 +11,5 @@ jobs:
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
-            -d "entry.1715493103=${{ github.event.client_payload.event_source }}" \
             -d "entry.747932621=${{ github.event.client_payload.soc }}" \
             -d "entry.1561980421=${{ github.event.client_payload.event_type }}"
