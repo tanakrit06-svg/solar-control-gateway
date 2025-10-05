@@ -8,7 +8,6 @@ jobs:
   log_event:
     runs-on: ubuntu-latest
     steps:
-
       # ส่งข้อมูลไป Google Form
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
         run: |
