@@ -1,5 +1,4 @@
 name: log-to-google-form
-
 on:
   repository_dispatch:
     types: [log_event]  # ตรงกับ event_type ที่ ESP32 ส่งมา
