@@ -17,13 +17,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: แจ้งเตือนผ่าน LINE ผ่าน Webhook
+        env:
+          SOC: ${{ inputs.soc }}
+          EVENT: ${{ inputs.event_type }}
         run: |
           curl -X POST https://eo2jv7jv7xq3z7z.m.pipedream.net \
-            -d "soc=${{ github.event.inputs.soc }}&event=${{ github.event.inputs.event_type }}"
+            -d "soc=$SOC&event=$EVENT"
 
       - name: Log Success
         if: success()
-        run: echo "✅ แจ้งเตือนสำเร็จ: SOC=${{ github.event.inputs.soc }}%, สถานะ=${{ github.event.inputs.event_type }}"
+        run: echo "✅ แจ้งเตือนสำเร็จ: SOC=${{ inputs.soc }}%, สถานะ=${{ inputs.event_type }}"
 
       - name: Log Failure
         if: failure()
