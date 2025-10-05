@@ -13,5 +13,5 @@ jobs:
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
             -d "entry.747932621=${{ github.event.client_payload.soc }}" \
-            -d "entry.1561980421=${{ github.event.client_payload.event_type }}" \
+            -d "entry.1561980421=${{ github.event.client_payload.status }}" \
             --fail --silent --show-error
