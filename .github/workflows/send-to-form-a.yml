@@ -1,15 +1,32 @@
 name: log-to-google-form
-
 on:
   repository_dispatch:
-    types: [log_event]
-
+    types: [log_event]  # ตรงกับ event_type ที่ ESP32 ส่งมา
 jobs:
   log_event:
     runs-on: ubuntu-latest
     steps:
+      # Debug step - ดูข้อมูลที่รับมา (สามารถลบออกได้หลังทดสอบ)
+      - name: Debug Received Payload
+        run: |
+          echo "================================"
+          echo "Received SOC: ${{ github.event.client_payload.soc }}"
+          echo "Received Event: ${{ github.event.client_payload.event_type }}"
+          echo "================================"
+      
+      # ส่งข้อมูลไป Google Form
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
             -d "entry.747932621=${{ github.event.client_payload.soc }}" \
-            -d "entry.1561980421=${{ github.event.client_payload.event_type }}"
+            -d "entry.1561980421=${{ github.event.client_payload.event_type }}" \
+            --fail --silent --show-error
+      
+      # แสดงผลลัพธ์
+      - name: Log Success
+        if: success()
+        run: echo "✅ Successfully logged SOC=${{ github.event.client_payload.soc }}% with event=${{ github.event.client_payload.event_type }}"
+      
+      - name: Log Failure
+        if: failure()
+        run: echo "❌ Failed to log to Google Form"
