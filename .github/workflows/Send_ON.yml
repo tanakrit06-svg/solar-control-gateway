@@ -1,24 +1,13 @@
 name: send-to-on
-
 on:
   repository_dispatch:
-    types: [log_event]  # ตรงกับ event_type ที่ ESP32 ส่งมา
-
+    types: [solar_on]
 jobs:
   log_event:
     runs-on: ubuntu-latest
     steps:
-      # Debug step - ดูข้อมูลที่รับมา (สามารถลบออกได้หลังทดสอบ)
-      - name: Debug Received Payload
-        run: |
-          echo "================================"
-          echo "Received SOC: ${{ github.event.client_payload.soc }}"
-          echo "Received Event: ${{ github.event.client_payload.event_type }}"
-          echo "================================"
-
-      # ส่งข้อมูลไป Google Form
-      - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
+      - name: ส่งไป Google Form ON
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse \
-            -d "entry.29631913=${{ github.event.client_payload.soc }}" \
+            -d "entry.XXXXXXXX=${{ github.event.client_payload.soc }}" \
             --fail --silent --show-error
