@@ -9,5 +9,5 @@ jobs:
       - name: ส่งไป Google Form OFF
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse \
-            -d "entry.1012650439=${{ github.event.client_payload.soc }}" \
+            -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
