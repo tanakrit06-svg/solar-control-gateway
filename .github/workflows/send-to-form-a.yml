@@ -1,7 +1,9 @@
 name: log-to-google-form
+
 on:
   repository_dispatch:
     types: [log_event]  # ตรงกับ event_type ที่ ESP32 ส่งมา
+
 jobs:
   log_event:
     runs-on: ubuntu-latest
@@ -13,7 +15,7 @@ jobs:
           echo "Received SOC: ${{ github.event.client_payload.soc }}"
           echo "Received Event: ${{ github.event.client_payload.event_type }}"
           echo "================================"
-      
+
       # ส่งข้อมูลไป Google Form
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
         run: |
@@ -21,12 +23,19 @@ jobs:
             -d "entry.747932621=${{ github.event.client_payload.soc }}" \
             -d "entry.1561980421=${{ github.event.client_payload.event_type }}" \
             --fail --silent --show-error
-      
+
+      # แจ้งเตือนผ่าน LINE Notify
+      - name: แจ้งเตือนผ่าน LINE Notify
+        run: |
+          curl -X POST https://notify-api.line.me/api/notify \
+            -H "Authorization: Bearer 5G0gVu1dgvli6NxKBfKRd6JPGTbGvyEVPhS3sCx4SKFBAXQ7h+aJq0IkBXkit/nji76Ij9BlTXKTdJIpSnMDaTxtSmCAHMivhJiFNB9JsYn1D3S6B+cQCyASMX/d/z1oplxgWQMR0IfvHA89g1Nf4QdB04t89/1O/w1cDnyilFU=" \
+            -F "message=🔔 แจ้งเตือนจาก ESPHome\nSOC: ${{ github.event.client_payload.soc }}%\nสถานะ: ${{ github.event.client_payload.event_type }}"
+
       # แสดงผลลัพธ์
       - name: Log Success
         if: success()
         run: echo "✅ Successfully logged SOC=${{ github.event.client_payload.soc }}% with event=${{ github.event.client_payload.event_type }}"
-      
+
       - name: Log Failure
         if: failure()
-        run: echo "❌ Failed to log to Google Form"
+        run: echo "❌ Failed to log to Google Form or LINE Notify"
