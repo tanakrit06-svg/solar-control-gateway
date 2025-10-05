@@ -8,13 +8,6 @@ jobs:
   log_event:
     runs-on: ubuntu-latest
     steps:
-      # Debug step - ดูข้อมูลที่รับมา (สามารถลบออกได้หลังทดสอบ)
-      - name: Debug Received Payload
-        run: |
-          echo "================================"
-          echo "Received SOC: ${{ github.event.client_payload.soc }}"
-          echo "Received Event: ${{ github.event.client_payload.event_type }}"
-          echo "================================"
 
       # ส่งข้อมูลไป Google Form
       - name: ส่งข้อมูลจาก ESP ไปยัง Google Form
