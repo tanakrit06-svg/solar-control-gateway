@@ -1,0 +1,62 @@
+name: 3-way-option
+on:
+  repository_dispatch:
+    types: [log_event, solar_on, solar_off]
+
+jobs:
+  handle_event:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: อ่านสถานะปัจจุบัน
+        id: read_state
+        run: |
+          if [ -f solar_state.txt ]; then
+            STATE=$(cat solar_state.txt)
+          else
+            STATE="none"
+          fi
+          echo "current_state=$STATE" >> $GITHUB_OUTPUT
+          echo "Current state: $STATE"
+      
+      # Sheet 1: ส่ง log_event ทุกครั้ง (ไม่มีเงื่อนไข)
+      - name: ส่งข้อมูลไป Sheet 1 (log)
+        if: github.event.action == 'log_event'
+        run: |
+          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
+            -d "entry.747932621=${{ github.event.client_payload.soc }}" \
+            -d "entry.1561980421=${{ github.event.client_payload.status }}" \
+            --fail --silent --show-error
+          echo "Log sent to Sheet 1"
+      
+      # Sheet 2: ส่ง solar_on เฉพาะเมื่อ state != "on_sent"
+      - name: ส่งข้อมูลไป Sheet 2 (solar_on)
+        if: github.event.action == 'solar_on' && steps.read_state.outputs.current_state != 'on_sent'
+        run: |
+          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse \
+            -d "entry.29631913=solar_on" \
+            --fail --silent --show-error
+          echo "on_sent" > solar_state.txt
+          echo "Solar ON sent to Sheet 2, state changed to on_sent"
+      
+      # Sheet 3: ส่ง solar_off เฉพาะเมื่อ state != "off_sent"
+      - name: ส่งข้อมูลไป Sheet 3 (solar_off)
+        if: github.event.action == 'solar_off' && steps.read_state.outputs.current_state != 'off_sent'
+        run: |
+          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse \
+            -d "entry.1012650439=solar_off" \
+            --fail --silent --show-error
+          echo "off_sent" > solar_state.txt
+          echo "Solar OFF sent to Sheet 3, state changed to off_sent"
+      
+      # บันทึกสถานะกลับ repository
+      - name: Commit state changes
+        if: github.event.action == 'solar_on' || github.event.action == 'solar_off'
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add solar_state.txt
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update solar state: ${{ github.event.action }}"
+          git push
