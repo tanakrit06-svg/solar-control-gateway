@@ -19,12 +19,15 @@ jobs:
         id: read_state
         run: |
           if [ -f solar_state.txt ]; then
-            STATE=$(cat solar_state.txt)
+            ON_STATE=$(grep '^on=' solar_state.txt | cut -d '=' -f2)
+            OFF_STATE=$(grep '^off=' solar_state.txt | cut -d '=' -f2)
           else
-            STATE="none"
+            ON_STATE="none"
+            OFF_STATE="none"
           fi
-          echo "current_state=$STATE" >> $GITHUB_OUTPUT
-          echo "Current state: $STATE"
+          echo "on_state=$ON_STATE" >> $GITHUB_OUTPUT
+          echo "off_state=$OFF_STATE" >> $GITHUB_OUTPUT
+          echo "Current state: on=$ON_STATE, off=$OFF_STATE"
 
       # 📝 ส่ง log_event ทุกครั้ง
       - name: ส่งข้อมูลไป Sheet 1 (log)
@@ -36,25 +39,27 @@ jobs:
             --fail --silent --show-error
           echo "Log sent to Sheet 1"
 
-      # ☀️ ส่ง solar_on ถ้ายังไม่เคยส่ง
+      # ☀️ ส่ง solar_on ถ้า on_state != sent
       - name: ส่งข้อมูลไป Sheet 2 (solar_on)
-        if: github.event.action == 'solar_on' && steps.read_state.outputs.current_state != 'on_sent'
+        if: github.event.action == 'solar_on' && steps.read_state.outputs.on_state != 'sent'
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse \
             -d "entry.29631913=solar_on" \
             --fail --silent --show-error
-          echo "on_sent" > solar_state.txt
-          echo "Solar ON sent to Sheet 2, state changed to on_sent"
+          echo "on=sent" > solar_state.txt
+          echo "off=none" >> solar_state.txt
+          echo "Solar ON sent → reset OFF state"
 
-      # 🌑 ส่ง solar_off ถ้ายังไม่เคยส่ง
+      # 🌑 ส่ง solar_off ถ้า off_state != sent
       - name: ส่งข้อมูลไป Sheet 3 (solar_off)
-        if: github.event.action == 'solar_off' && steps.read_state.outputs.current_state != 'off_sent'
+        if: github.event.action == 'solar_off' && steps.read_state.outputs.off_state != 'sent'
         run: |
           curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse \
             -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
-          echo "off_sent" > solar_state.txt
-          echo "Solar OFF sent to Sheet 3, state changed to off_sent"
+          echo "off=sent" > solar_state.txt
+          echo "on=none" >> solar_state.txt
+          echo "Solar OFF sent → reset ON state"
 
       # 💾 Commit และ push กลับเข้า repo โดยใช้ PAT
       - name: Commit state changes
