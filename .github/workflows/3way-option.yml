@@ -1,4 +1,5 @@
 name: 3-way-option
+
 on:
   repository_dispatch:
     types: [log_event, solar_on, solar_off]
@@ -7,11 +8,13 @@ jobs:
   handle_event:
     runs-on: ubuntu-latest
     steps:
+      # ✅ Checkout repo โดยไม่ใช้ credentials (เราจะใช้ PAT manual)
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          persist-credentials: false  # ปิดไว้เพื่อใช้ PAT manual ด้านล่าง
+          persist-credentials: false
 
+      # 📖 อ่านสถานะจากไฟล์ solar_state.txt
       - name: อ่านสถานะปัจจุบัน
         id: read_state
         run: |
@@ -23,6 +26,7 @@ jobs:
           echo "current_state=$STATE" >> $GITHUB_OUTPUT
           echo "Current state: $STATE"
 
+      # 📝 ส่ง log_event ทุกครั้ง
       - name: ส่งข้อมูลไป Sheet 1 (log)
         if: github.event.action == 'log_event'
         run: |
@@ -32,6 +36,7 @@ jobs:
             --fail --silent --show-error
           echo "Log sent to Sheet 1"
 
+      # ☀️ ส่ง solar_on ถ้ายังไม่เคยส่ง
       - name: ส่งข้อมูลไป Sheet 2 (solar_on)
         if: github.event.action == 'solar_on' && steps.read_state.outputs.current_state != 'on_sent'
         run: |
@@ -41,6 +46,7 @@ jobs:
           echo "on_sent" > solar_state.txt
           echo "Solar ON sent to Sheet 2, state changed to on_sent"
 
+      # 🌑 ส่ง solar_off ถ้ายังไม่เคยส่ง
       - name: ส่งข้อมูลไป Sheet 3 (solar_off)
         if: github.event.action == 'solar_off' && steps.read_state.outputs.current_state != 'off_sent'
         run: |
@@ -50,6 +56,7 @@ jobs:
           echo "off_sent" > solar_state.txt
           echo "Solar OFF sent to Sheet 3, state changed to off_sent"
 
+      # 💾 Commit และ push กลับเข้า repo โดยใช้ PAT
       - name: Commit state changes
         if: github.event.action == 'solar_on' || github.event.action == 'solar_off'
         run: |
@@ -57,5 +64,5 @@ jobs:
           git config user.email "actions@github.com"
           git add solar_state.txt
           git diff --quiet && git diff --staged --quiet || git commit -m "Update solar state: ${{ github.event.action }}"
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git push
