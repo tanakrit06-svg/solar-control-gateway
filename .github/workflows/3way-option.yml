@@ -32,9 +32,10 @@ jobs:
 
       - name: ตรวจสอบและเปลี่ยน Mode
         id: check_mode
+        env:
+          SOC: ${{ github.event.client_payload.soc }}
+          CURRENT_MODE: ${{ steps.read_state.outputs.mode }}
         run: |
-          SOC=${{ github.event.client_payload.soc }}
-          CURRENT_MODE=${{ steps.read_state.outputs.mode }}
           NEW_MODE=$CURRENT_MODE
           EVENT_TEXT=""
           SEND_SOLAR_ON="false"
@@ -71,10 +72,10 @@ jobs:
           echo "Decision: mode=$NEW_MODE, event=$EVENT_TEXT, solar_on=$SEND_SOLAR_ON, solar_off=$SEND_SOLAR_OFF"
 
       - name: ส่งข้อมูลไป Sheet 1
+        env:
+          SOC: ${{ github.event.client_payload.soc }}
+          EVENT: ${{ steps.check_mode.outputs.event_text }}
         run: |
-          SOC="${{ github.event.client_payload.soc }}"
-          EVENT="${{ steps.check_mode.outputs.event_text }}"
-          
           echo "Sending to Sheet 1: SOC=$SOC, EVENT=$EVENT"
           
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse" \
@@ -107,11 +108,13 @@ jobs:
           echo "Sheet 3: solar_off sent"
 
       - name: บันทึกสถานะใหม่
+        env:
+          NEW_MODE: ${{ steps.check_mode.outputs.mode }}
+          SEND_SOLAR_ON: ${{ steps.check_mode.outputs.send_solar_on }}
+          SEND_SOLAR_OFF: ${{ steps.check_mode.outputs.send_solar_off }}
+          SOLAR_ON_SENT_OLD: ${{ steps.read_state.outputs.solar_on_sent }}
+          SOLAR_OFF_SENT_OLD: ${{ steps.read_state.outputs.solar_off_sent }}
         run: |
-          NEW_MODE="${{ steps.check_mode.outputs.mode }}"
-          SEND_SOLAR_ON="${{ steps.check_mode.outputs.send_solar_on }}"
-          SEND_SOLAR_OFF="${{ steps.check_mode.outputs.send_solar_off }}"
-          
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
@@ -119,8 +122,8 @@ jobs:
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
           else
-            SOLAR_ON_SENT="${{ steps.read_state.outputs.solar_on_sent }}"
-            SOLAR_OFF_SENT="${{ steps.read_state.outputs.solar_off_sent }}"
+            SOLAR_ON_SENT="$SOLAR_ON_SENT_OLD"
+            SOLAR_OFF_SENT="$SOLAR_OFF_SENT_OLD"
           fi
           
           echo "mode=$NEW_MODE" > solar_state.txt
@@ -130,11 +133,14 @@ jobs:
           echo "State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT"
 
       - name: Commit state changes
+        env:
+          SOC: ${{ github.event.client_payload.soc }}
+          MODE: ${{ steps.check_mode.outputs.mode }}
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add solar_state.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update state: mode=${{ steps.check_mode.outputs.mode }}, SOC=${{ github.event.client_payload.soc }}"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update state: mode=$MODE, SOC=$SOC"
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git push
           
