@@ -1,1 +1,3 @@
-
+mode=normal
+solar_on_sent=true
+solar_off_sent=false
