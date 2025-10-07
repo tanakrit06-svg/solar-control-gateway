@@ -41,9 +41,13 @@ jobs:
           SEND_SOLAR_ON="false"
           SEND_SOLAR_OFF="false"
           
-          echo "Processing: SOC=$SOC, Current Mode=$CURRENT_MODE"
+          echo "=== DEBUG START ==="
+          echo "SOC received: $SOC"
+          echo "CURRENT_MODE: $CURRENT_MODE"
+          echo "=== DEBUG END ==="
           
           if [ "$CURRENT_MODE" = "normal" ]; then
+            echo "In NORMAL mode branch"
             if [ $SOC -le 25 ]; then
               NEW_MODE="low_batt"
               EVENT_TEXT="Low_Batt"
@@ -52,8 +56,10 @@ jobs:
             else
               EVENT_TEXT="Normal_Batt"
               echo "Stay in Normal Mode (SOC=$SOC > 25)"
+              echo "EVENT_TEXT set to: $EVENT_TEXT"
             fi
           elif [ "$CURRENT_MODE" = "low_batt" ]; then
+            echo "In LOW_BATT mode branch"
             if [ $SOC -ge 35 ]; then
               NEW_MODE="normal"
               EVENT_TEXT="Normal_Batt"
@@ -63,12 +69,23 @@ jobs:
               EVENT_TEXT="Low_Batt"
               echo "Stay in Low Batt Mode (SOC=$SOC < 35)"
             fi
+          else
+            echo "ERROR: Unknown mode: $CURRENT_MODE"
           fi
+          
+          echo "=== BEFORE OUTPUT ==="
+          echo "NEW_MODE: $NEW_MODE"
+          echo "EVENT_TEXT: $EVENT_TEXT"
+          echo "SEND_SOLAR_ON: $SEND_SOLAR_ON"
+          echo "SEND_SOLAR_OFF: $SEND_SOLAR_OFF"
+          echo "=== OUTPUT TO GITHUB ==="
           
           echo "mode=$NEW_MODE" >> $GITHUB_OUTPUT
           echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
           echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
           echo "send_solar_off=$SEND_SOLAR_OFF" >> $GITHUB_OUTPUT
+          
+          echo "=== FINAL ==="
           echo "Decision: mode=$NEW_MODE, event=$EVENT_TEXT, solar_on=$SEND_SOLAR_ON, solar_off=$SEND_SOLAR_OFF"
 
       - name: ส่งข้อมูลไป Sheet 1
