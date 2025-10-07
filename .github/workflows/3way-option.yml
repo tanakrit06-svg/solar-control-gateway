@@ -7,13 +7,11 @@ jobs:
   handle_soc:
     runs-on: ubuntu-latest
     steps:
-      # ✅ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           persist-credentials: false
 
-      # 📖 อ่านสถานะปัจจุบันจากไฟล์
       - name: อ่านสถานะปัจจุบัน
         id: read_state
         run: |
@@ -30,9 +28,8 @@ jobs:
           echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "solar_on_sent=$SOLAR_ON_SENT" >> $GITHUB_OUTPUT
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> $GITHUB_OUTPUT
-          echo "📊 Current State: mode=$MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT"
+          echo "Current State: mode=$MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT"
 
-      # 🔄 ตรวจสอบและเปลี่ยน Mode
       - name: ตรวจสอบและเปลี่ยน Mode
         id: check_mode
         run: |
@@ -43,28 +40,27 @@ jobs:
           SEND_SOLAR_ON="false"
           SEND_SOLAR_OFF="false"
           
-          echo "🔍 Processing: SOC=$SOC, Current Mode=$CURRENT_MODE"
+          echo "Processing: SOC=$SOC, Current Mode=$CURRENT_MODE"
           
-          # ตรวจสอบการเปลี่ยน Mode
           if [ "$CURRENT_MODE" = "normal" ]; then
             if [ $SOC -le 25 ]; then
               NEW_MODE="low_batt"
               EVENT_TEXT="Low_Batt"
               SEND_SOLAR_OFF="true"
-              echo "🔴 Mode Change: Normal → Low Batt (SOC=$SOC ≤ 25)"
+              echo "Mode Change: Normal -> Low Batt (SOC=$SOC <= 25)"
             else
               EVENT_TEXT="Normal_Batt"
-              echo "🟢 Stay in Normal Mode (SOC=$SOC > 25)"
+              echo "Stay in Normal Mode (SOC=$SOC > 25)"
             fi
           elif [ "$CURRENT_MODE" = "low_batt" ]; then
             if [ $SOC -ge 35 ]; then
               NEW_MODE="normal"
               EVENT_TEXT="Normal_Batt"
               SEND_SOLAR_ON="true"
-              echo "🟢 Mode Change: Low Batt → Normal (SOC=$SOC ≥ 35)"
+              echo "Mode Change: Low Batt -> Normal (SOC=$SOC >= 35)"
             else
               EVENT_TEXT="Low_Batt"
-              echo "🔴 Stay in Low Batt Mode (SOC=$SOC < 35)"
+              echo "Stay in Low Batt Mode (SOC=$SOC < 35)"
             fi
           fi
           
@@ -72,49 +68,50 @@ jobs:
           echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
           echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
           echo "send_solar_off=$SEND_SOLAR_OFF" >> $GITHUB_OUTPUT
-          echo "📋 Decision: mode=$NEW_MODE, event=$EVENT_TEXT, solar_on=$SEND_SOLAR_ON, solar_off=$SEND_SOLAR_OFF"
+          echo "Decision: mode=$NEW_MODE, event=$EVENT_TEXT, solar_on=$SEND_SOLAR_ON, solar_off=$SEND_SOLAR_OFF"
 
-      # 📝 ส่งข้อมูลไป Sheet 1 (ทุกครั้ง)
-      - name: ส่งข้อมูลไป Sheet 1 (Log)
+      - name: ส่งข้อมูลไป Sheet 1
         run: |
-          SOC=${{ github.event.client_payload.soc }}
+          SOC="${{ github.event.client_payload.soc }}"
           EVENT="${{ steps.check_mode.outputs.event_text }}"
           
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse \
+          echo "Sending to Sheet 1: SOC=$SOC, EVENT=$EVENT"
+          
+          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse" \
             -d "entry.747932621=$SOC" \
             -d "entry.1561980421=$EVENT" \
             --fail --silent --show-error
           
-          echo "✅ Sheet 1 Log sent: soc=$SOC, event=$EVENT"
+          echo "Sheet 1 sent: soc=$SOC, event=$EVENT"
 
-      # ☀️ ส่ง solar_on ไป Sheet 2 (ถ้าต้องส่ง)
       - name: ส่ง solar_on ไป Sheet 2
         if: steps.check_mode.outputs.send_solar_on == 'true' && steps.read_state.outputs.solar_on_sent == 'false'
         run: |
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse \
+          echo "Sending solar_on to Sheet 2"
+          
+          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
             -d "entry.29631913=solar_on" \
             --fail --silent --show-error
           
-          echo "✅ Sheet 2: solar_on sent"
+          echo "Sheet 2: solar_on sent"
 
-      # 🌑 ส่ง solar_off ไป Sheet 3 (ถ้าต้องส่ง)
       - name: ส่ง solar_off ไป Sheet 3
         if: steps.check_mode.outputs.send_solar_off == 'true' && steps.read_state.outputs.solar_off_sent == 'false'
         run: |
-          curl -X POST https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse \
+          echo "Sending solar_off to Sheet 3"
+          
+          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
             -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
           
-          echo "✅ Sheet 3: solar_off sent"
+          echo "Sheet 3: solar_off sent"
 
-      # 💾 บันทึกสถานะใหม่
       - name: บันทึกสถานะใหม่
         run: |
-          NEW_MODE=${{ steps.check_mode.outputs.mode }}
-          SEND_SOLAR_ON=${{ steps.check_mode.outputs.send_solar_on }}
-          SEND_SOLAR_OFF=${{ steps.check_mode.outputs.send_solar_off }}
+          NEW_MODE="${{ steps.check_mode.outputs.mode }}"
+          SEND_SOLAR_ON="${{ steps.check_mode.outputs.send_solar_on }}"
+          SEND_SOLAR_OFF="${{ steps.check_mode.outputs.send_solar_off }}"
           
-          # กำหนดค่า sent flags
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
@@ -122,18 +119,16 @@ jobs:
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
           else
-            SOLAR_ON_SENT=${{ steps.read_state.outputs.solar_on_sent }}
-            SOLAR_OFF_SENT=${{ steps.read_state.outputs.solar_off_sent }}
+            SOLAR_ON_SENT="${{ steps.read_state.outputs.solar_on_sent }}"
+            SOLAR_OFF_SENT="${{ steps.read_state.outputs.solar_off_sent }}"
           fi
           
-          # เขียนไฟล์ state
           echo "mode=$NEW_MODE" > solar_state.txt
           echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           
-          echo "💾 State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT"
+          echo "State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT"
 
-      # 📤 Commit และ Push
       - name: Commit state changes
         run: |
           git config user.name "GitHub Actions Bot"
@@ -143,4 +138,4 @@ jobs:
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git push
           
-          echo "✅ State committed and pushed"
+          echo "State committed and pushed"
