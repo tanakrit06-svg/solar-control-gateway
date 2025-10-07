@@ -40,8 +40,8 @@ jobs:
         env:
           SOC: ${{ github.event.client_payload.soc }}
           CURRENT_MODE: ${{ steps.read_state.outputs.mode }}
+          SOLAR_ON_SENT: ${{ steps.read_state.outputs.solar_on_sent }}
         run: |
-          # Ensure CURRENT_MODE has a default value
           CURRENT_MODE=${CURRENT_MODE:-normal}
           NEW_MODE=$CURRENT_MODE
           EVENT_TEXT=""
@@ -51,6 +51,7 @@ jobs:
           echo "=== DEBUG START ==="
           echo "SOC received: $SOC"
           echo "CURRENT_MODE: $CURRENT_MODE"
+          echo "SOLAR_ON_SENT: $SOLAR_ON_SENT"
           echo "=== DEBUG END ==="
           
           if [ "$CURRENT_MODE" = "normal" ]; then
@@ -62,8 +63,12 @@ jobs:
               echo "Mode Change: Normal -> Low Batt (SOC=$SOC <= 25)"
             else
               EVENT_TEXT="Normal_Batt"
+              # ถ้ายังไม่เคยส่ง solar_on และ SOC >= 35 ให้ส่ง
+              if [ "$SOLAR_ON_SENT" = "false" ] && [ $SOC -ge 35 ]; then
+                SEND_SOLAR_ON="true"
+                echo "First time in Normal Mode with SOC >= 35, sending solar_on"
+              fi
               echo "Stay in Normal Mode (SOC=$SOC > 25)"
-              echo "EVENT_TEXT set to: $EVENT_TEXT"
             fi
           elif [ "$CURRENT_MODE" = "low_batt" ]; then
             echo "In LOW_BATT mode branch"
