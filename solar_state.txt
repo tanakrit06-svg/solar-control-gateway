@@ -1,3 +1,3 @@
-mode=
-solar_on_sent=
-solar_off_sent=
+mode=normal
+solar_on_sent=false
+solar_off_sent=false
