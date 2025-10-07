@@ -16,14 +16,19 @@ jobs:
         id: read_state
         run: |
           if [ -f solar_state.txt ]; then
-            MODE=$(grep '^mode=' solar_state.txt | cut -d '=' -f2)
-            SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2)
-            SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
+            MODE=$(grep '^mode=' solar_state.txt | cut -d '=' -f2 || echo "normal")
+            SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
+            SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
           else
             MODE="normal"
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="false"
           fi
+          
+          # Ensure defaults if empty
+          MODE=${MODE:-normal}
+          SOLAR_ON_SENT=${SOLAR_ON_SENT:-false}
+          SOLAR_OFF_SENT=${SOLAR_OFF_SENT:-false}
           
           echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "solar_on_sent=$SOLAR_ON_SENT" >> $GITHUB_OUTPUT
@@ -36,6 +41,8 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
           CURRENT_MODE: ${{ steps.read_state.outputs.mode }}
         run: |
+          # Ensure CURRENT_MODE has a default value
+          CURRENT_MODE=${CURRENT_MODE:-normal}
           NEW_MODE=$CURRENT_MODE
           EVENT_TEXT=""
           SEND_SOLAR_ON="false"
@@ -70,7 +77,10 @@ jobs:
               echo "Stay in Low Batt Mode (SOC=$SOC < 35)"
             fi
           else
-            echo "ERROR: Unknown mode: $CURRENT_MODE"
+            echo "ERROR: Unknown mode: $CURRENT_MODE - defaulting to normal"
+            CURRENT_MODE="normal"
+            NEW_MODE="normal"
+            EVENT_TEXT="Normal_Batt"
           fi
           
           echo "=== BEFORE OUTPUT ==="
