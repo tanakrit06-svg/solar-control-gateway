@@ -1,4 +1,4 @@
-name: SOC Monitor with Mode Switching
+name: 3way-option
 on:
   repository_dispatch:
     types: [log_event]
