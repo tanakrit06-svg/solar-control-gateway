@@ -118,6 +118,17 @@ jobs:
             EVENT_TEXT="Normal_Batt"
           fi
 
+          # ตรวจสอบสถานะที่ยังไม่เคยส่งเลย
+          if [ "$SOLAR_ON_SENT" = "false" ] && [ "$NEW_MODE" = "normal" ]; then
+            echo "🔄 ยังไม่เคยส่ง solar_on ในโหมด normal → ส่งเลย"
+            SEND_SOLAR_ON="true"
+          fi
+
+          if [ "$SOLAR_OFF_SENT" = "false" ] && [ "$NEW_MODE" = "low_batt" ]; then
+            echo "🔄 ยังไม่เคยส่ง solar_off ในโหมด low_batt → ส่งเลย"
+            SEND_SOLAR_OFF="true"
+          fi
+
           echo "mode=$NEW_MODE" >> $GITHUB_OUTPUT
           echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
           echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
@@ -138,7 +149,7 @@ jobs:
           echo "✅ Sheet 1 sent"
 
       - name: ส่ง solar_on ไป Sheet 2
-        if: steps.check_mode.outputs.send_solar_on == 'true' && steps.read_state.outputs.solar_on_sent == 'false'
+        if: steps.check_mode.outputs.send_solar_on == 'true'
         run: |
           echo "Sending solar_on to Sheet 2"
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
@@ -147,13 +158,8 @@ jobs:
           echo "✅ Sheet 2: solar_on sent"
 
       - name: ส่ง solar_off ไป Sheet 3
-        if: steps.check_mode.outputs.send_solar_off == 'true' && steps.read_state.outputs.solar_off_sent == 'false'
+        if: steps.check_mode.outputs.send_solar_off == 'true'
         run: |
-          echo "Sending solar_off to Sheet 3"
-          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
-            -d "entry.1012650439=solar_off" \
-            --fail --silent --show-error
-          echo "✅ Sheet 3: solar_off sent"
 
       - name: บันทึกสถานะใหม่
         env:
