@@ -12,30 +12,56 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: อ่านสถานะปัจจุบัน
+      - name: อ่านสถานะปัจจุบันและจัดการกรณีเริ่มต้น
         id: read_state
+        env:
+          SOC: ${{ github.event.client_payload.soc }}
         run: |
-          if [ -f solar_state.txt ]; then
-            MODE=$(grep '^mode=' solar_state.txt | cut -d '=' -f2 || echo "normal")
-            SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
-            SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
-            LAST_SOC=$(grep '^last_soc=' solar_state.txt | cut -d '=' -f2 || echo "")
-          else
-            MODE="normal"
-            SOLAR_ON_SENT="false"
-            SOLAR_OFF_SENT="false"
-            LAST_SOC=""
+          INIT_REQUIRED="false"
+
+          if [ ! -f solar_state.txt ] || [ ! -s solar_state.txt ]; then
+            echo "⚠️ solar_state.txt ไม่พบหรือว่าง → สร้างสถานะเริ่มต้นจาก SOC=$SOC"
+
+            if [ "$SOC" -le 25 ]; then
+              MODE="low_batt"
+              SOLAR_ON_SENT="false"
+              SOLAR_OFF_SENT="true"
+              echo "ส่ง solar_off ไป Sheet 3 (SOC=$SOC ≤ 25)"
+              curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
+                -d "entry.1012650439=solar_off" \
+                --fail --silent --show-error
+              echo "✅ Sheet 3: solar_off sent"
+            else
+              MODE="normal"
+              SOLAR_ON_SENT="true"
+              SOLAR_OFF_SENT="false"
+              echo "ส่ง solar_on ไป Sheet 2 (SOC=$SOC > 25)"
+              curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
+                -d "entry.29631913=solar_on" \
+                --fail --silent --show-error
+              echo "✅ Sheet 2: solar_on sent"
+            fi
+
+            LAST_SOC="$SOC"
+            echo "mode=$MODE" > solar_state.txt
+            echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
+            echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
+            echo "last_soc=$LAST_SOC" >> solar_state.txt
+
+            INIT_REQUIRED="true"
           fi
 
-          MODE=${MODE:-normal}
-          SOLAR_ON_SENT=${SOLAR_ON_SENT:-false}
-          SOLAR_OFF_SENT=${SOLAR_OFF_SENT:-false}
+          MODE=$(grep '^mode=' solar_state.txt | cut -d '=' -f2 || echo "normal")
+          SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
+          SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
+          LAST_SOC=$(grep '^last_soc=' solar_state.txt | cut -d '=' -f2 || echo "")
 
           echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "solar_on_sent=$SOLAR_ON_SENT" >> $GITHUB_OUTPUT
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> $GITHUB_OUTPUT
           echo "last_soc=$LAST_SOC" >> $GITHUB_OUTPUT
-          echo "Current State: mode=$MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$LAST_SOC"
+          echo "init_required=$INIT_REQUIRED" >> $GITHUB_OUTPUT
+          echo "📄 Current State: mode=$MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$LAST_SOC"
 
       - name: ตรวจสอบและเปลี่ยน Mode
         id: check_mode
@@ -45,20 +71,24 @@ jobs:
           SOLAR_ON_SENT: ${{ steps.read_state.outputs.solar_on_sent }}
           SOLAR_OFF_SENT: ${{ steps.read_state.outputs.solar_off_sent }}
           LAST_SOC: ${{ steps.read_state.outputs.last_soc }}
+          INIT_REQUIRED: ${{ steps.read_state.outputs.init_required }}
         run: |
+          if [ "$INIT_REQUIRED" = "true" ]; then
+            echo "✅ ข้ามการตรวจสอบเพราะเพิ่งสร้างสถานะเริ่มต้น"
+            echo "skip_sheet1=true" >> $GITHUB_OUTPUT
+            echo "send_solar_on=false" >> $GITHUB_OUTPUT
+            echo "send_solar_off=false" >> $GITHUB_OUTPUT
+            echo "event_text=Init" >> $GITHUB_OUTPUT
+            echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           CURRENT_MODE=${CURRENT_MODE:-normal}
           NEW_MODE=$CURRENT_MODE
           EVENT_TEXT=""
           SEND_SOLAR_ON="false"
           SEND_SOLAR_OFF="false"
           SKIP_SHEET1="false"
-
-          echo "=== DEBUG START ==="
-          echo "SOC received: $SOC"
-          echo "CURRENT_MODE: $CURRENT_MODE"
-          echo "SOLAR_ON_SENT: $SOLAR_ON_SENT"
-          echo "LAST_SOC: $LAST_SOC"
-          echo "=== DEBUG END ==="
 
           if [ "$SOC" = "$LAST_SOC" ]; then
             echo "SOC ($SOC) is same as last sent ($LAST_SOC) → skip Sheet 1"
@@ -106,7 +136,7 @@ jobs:
             -d "entry.747932621=$SOC" \
             -d "entry.1561980421=$EVENT" \
             --fail --silent --show-error
-          echo "Sheet 1 sent: soc=$SOC, event=$EVENT"
+          echo "✅ Sheet 1 sent"
 
       - name: ส่ง solar_on ไป Sheet 2
         if: steps.check_mode.outputs.send_solar_on == 'true' && steps.read_state.outputs.solar_on_sent == 'false'
@@ -115,7 +145,7 @@ jobs:
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
             -d "entry.29631913=solar_on" \
             --fail --silent --show-error
-          echo "Sheet 2: solar_on sent"
+          echo "✅ Sheet 2: solar_on sent"
 
       - name: ส่ง solar_off ไป Sheet 3
         if: steps.check_mode.outputs.send_solar_off == 'true' && steps.read_state.outputs.solar_off_sent == 'false'
@@ -124,43 +154,8 @@ jobs:
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
             -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
-          echo "Sheet 3: solar_off sent"
+          echo "✅ Sheet 3: solar_off sent"
 
       - name: บันทึกสถานะใหม่
         env:
           NEW_MODE: ${{ steps.check_mode.outputs.mode }}
-          SEND_SOLAR_ON: ${{ steps.check_mode.outputs.send_solar_on }}
-          SEND_SOLAR_OFF: ${{ steps.check_mode.outputs.send_solar_off }}
-          SOLAR_ON_SENT_OLD: ${{ steps.read_state.outputs.solar_on_sent }}
-          SOLAR_OFF_SENT_OLD: ${{ steps.read_state.outputs.solar_off_sent }}
-          SOC: ${{ github.event.client_payload.soc }}
-        run: |
-          if [ "$SEND_SOLAR_ON" = "true" ]; then
-            SOLAR_ON_SENT="true"
-            SOLAR_OFF_SENT="false"
-          elif [ "$SEND_SOLAR_OFF" = "true" ]; then
-            SOLAR_ON_SENT="false"
-            SOLAR_OFF_SENT="true"
-          else
-            SOLAR_ON_SENT="$SOLAR_ON_SENT_OLD"
-            SOLAR_OFF_SENT="$SOLAR_OFF_SENT_OLD"
-          fi
-
-          echo "mode=$NEW_MODE" > solar_state.txt
-          echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
-          echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
-          echo "last_soc=$SOC" >> solar_state.txt
-          echo "State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$SOC"
-
-      - name: Commit state changes
-        env:
-          SOC: ${{ github.event.client_payload.soc }}
-          MODE: ${{ steps.check_mode.outputs.mode }}
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git add solar_state.txt
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update state: mode=$MODE, SOC=$SOC"
-          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
-          git push
-          echo "State committed and pushed"
