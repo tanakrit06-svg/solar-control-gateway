@@ -1,3 +1,3 @@
-mode=normal
-solar_on_sent=true
-solar_off_sent=false
+mode=low_batt
+solar_on_sent=false
+solar_off_sent=true
