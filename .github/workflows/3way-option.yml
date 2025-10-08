@@ -95,18 +95,18 @@ jobs:
           fi
 
           if [ "$CURRENT_MODE" = "normal" ]; then
-            if [ $SOC -le 25 ]; then
+            if [ "$SOC" -le 25 ]; then
               NEW_MODE="low_batt"
               EVENT_TEXT="Low_Batt"
               SEND_SOLAR_OFF="true"
             else
               EVENT_TEXT="Normal_Batt"
-              if [ "$SOLAR_ON_SENT" = "false" ] && [ $SOC -ge 35 ]; then
+              if [ "$SOLAR_ON_SENT" = "false" ] && [ "$SOC" -ge 35 ]; then
                 SEND_SOLAR_ON="true"
               fi
             fi
           elif [ "$CURRENT_MODE" = "low_batt" ]; then
-            if [ $SOC -ge 35 ]; then
+            if [ "$SOC" -ge 35 ]; then
               NEW_MODE="normal"
               EVENT_TEXT="Normal_Batt"
               SEND_SOLAR_ON="true"
@@ -176,4 +176,7 @@ jobs:
           fi
 
           echo "mode=$NEW_MODE" > solar_state.txt
-          echo "solar_on
+          echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
+          echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
+          echo "last_soc=$SOC" >> solar_state.txt
+          echo "📄 State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$SOC"
