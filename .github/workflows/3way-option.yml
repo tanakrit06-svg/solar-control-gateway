@@ -61,7 +61,6 @@ jobs:
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> $GITHUB_OUTPUT
           echo "last_soc=$LAST_SOC" >> $GITHUB_OUTPUT
           echo "init_required=$INIT_REQUIRED" >> $GITHUB_OUTPUT
-          echo "📄 Current State: mode=$MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$LAST_SOC"
 
       - name: ตรวจสอบและเปลี่ยน Mode
         id: check_mode
@@ -159,3 +158,22 @@ jobs:
       - name: บันทึกสถานะใหม่
         env:
           NEW_MODE: ${{ steps.check_mode.outputs.mode }}
+          SEND_SOLAR_ON: ${{ steps.check_mode.outputs.send_solar_on }}
+          SEND_SOLAR_OFF: ${{ steps.check_mode.outputs.send_solar_off }}
+          SOLAR_ON_SENT_OLD: ${{ steps.read_state.outputs.solar_on_sent }}
+          SOLAR_OFF_SENT_OLD: ${{ steps.read_state.outputs.solar_off_sent }}
+          SOC: ${{ github.event.client_payload.soc }}
+        run: |
+          if [ "$SEND_SOLAR_ON" = "true" ]; then
+            SOLAR_ON_SENT="true"
+            SOLAR_OFF_SENT="false"
+          elif [ "$SEND_SOLAR_OFF" = "true" ]; then
+            SOLAR_ON_SENT="false"
+            SOLAR_OFF_SENT="true"
+          else
+            SOLAR_ON_SENT="$SOLAR_ON_SENT_OLD"
+            SOLAR_OFF_SENT="$SOLAR_OFF_SENT_OLD"
+          fi
+
+          echo "mode=$NEW_MODE" > solar_state.txt
+          echo "solar_on
