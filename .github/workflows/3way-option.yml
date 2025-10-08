@@ -90,7 +90,6 @@ jobs:
           SKIP_SHEET1="false"
 
           if [ "$SOC" = "$LAST_SOC" ]; then
-            echo "SOC ($SOC) is same as last sent ($LAST_SOC) → skip Sheet 1"
             SKIP_SHEET1="true"
           fi
 
@@ -120,12 +119,10 @@ jobs:
 
           # ตรวจสอบสถานะที่ยังไม่เคยส่งเลย
           if [ "$SOLAR_ON_SENT" = "false" ] && [ "$NEW_MODE" = "normal" ]; then
-            echo "🔄 ยังไม่เคยส่ง solar_on ในโหมด normal → ส่งเลย"
             SEND_SOLAR_ON="true"
           fi
 
           if [ "$SOLAR_OFF_SENT" = "false" ] && [ "$NEW_MODE" = "low_batt" ]; then
-            echo "🔄 ยังไม่เคยส่ง solar_off ในโหมด low_batt → ส่งเลย"
             SEND_SOLAR_OFF="true"
           fi
 
@@ -141,25 +138,24 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
           EVENT: ${{ steps.check_mode.outputs.event_text }}
         run: |
-          echo "Sending to Sheet 1: SOC=$SOC, EVENT=$EVENT"
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse" \
             -d "entry.747932621=$SOC" \
             -d "entry.1561980421=$EVENT" \
             --fail --silent --show-error
-          echo "✅ Sheet 1 sent"
 
       - name: ส่ง solar_on ไป Sheet 2
         if: steps.check_mode.outputs.send_solar_on == 'true'
         run: |
-          echo "Sending solar_on to Sheet 2"
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
             -d "entry.29631913=solar_on" \
             --fail --silent --show-error
-          echo "✅ Sheet 2: solar_on sent"
 
       - name: ส่ง solar_off ไป Sheet 3
         if: steps.check_mode.outputs.send_solar_off == 'true'
         run: |
+          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
+            -d "entry.1012650439=solar_off" \
+            --fail --silent --show-error
 
       - name: บันทึกสถานะใหม่
         env:
@@ -186,3 +182,16 @@ jobs:
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           echo "last_soc=$SOC" >> solar_state.txt
           echo "📄 State saved: mode=$NEW_MODE, solar_on_sent=$SOLAR_ON_SENT, solar_off_sent=$SOLAR_OFF_SENT, last_soc=$SOC"
+
+      - name: Commit state changes
+        env:
+          SOC: ${{ github.event.client_payload.soc }}
+          MODE: ${{ steps.check_mode.outputs.mode }}
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add solar_state.txt
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update state: mode=$MODE, SOC=$SOC"
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git push
+          echo "✅ State committed and pushed"
