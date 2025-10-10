@@ -82,12 +82,22 @@ jobs:
           FIRST_TIME: ${{ steps.read_state.outputs.first_time }}
           SOC_CHANGED: ${{ steps.read_state.outputs.soc_changed }}
         run: |
+          NEW_MODE=$CURRENT_MODE
+          EVENT_TEXT=""
+          SEND_SOLAR_ON="false"
+          SEND_SOLAR_OFF="false"
+          EVER_LOW_BATT_NEW=$EVER_LOW_BATT
+
           if [ "$FIRST_TIME" = "true" ]; then
-            echo "✅ ส่งครั้งแรกหลังสร้างไฟล์"
+            if [ "$SOC" -le 25 ]; then
+              EVENT_TEXT="Low_Batt"
+            else
+              EVENT_TEXT="Normal_Batt"
+            fi
             echo "skip_sheet1=false" >> $GITHUB_OUTPUT
             echo "send_solar_on=false" >> $GITHUB_OUTPUT
             echo "send_solar_off=false" >> $GITHUB_OUTPUT
-            echo "event_text=Init" >> $GITHUB_OUTPUT
+            echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
             echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
             echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
             exit 0
@@ -103,12 +113,6 @@ jobs:
             echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
             exit 0
           fi
-
-          NEW_MODE=$CURRENT_MODE
-          EVENT_TEXT=""
-          SEND_SOLAR_ON="false"
-          SEND_SOLAR_OFF="false"
-          EVER_LOW_BATT_NEW=$EVER_LOW_BATT
 
           if [ "$SOC" -le 25 ]; then
             EVENT_TEXT="Low_Batt"
@@ -176,10 +180,10 @@ jobs:
             SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           fi
 
-          echo "mode=$NEW_MODE" > solar_state.txt
+          echo "mode=$NEW_MODE" > solar_state
+                    echo "mode=$NEW_MODE" > solar_state.txt
           echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
-          echo "solar_off_sent=$SOLAR_OFF_SENT"
-                    echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
+          echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           echo "last_soc=$SOC" >> solar_state.txt
           echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
 
