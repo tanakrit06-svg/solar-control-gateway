@@ -1,5 +1,5 @@
-mode=normal
-solar_on_sent=true
-solar_off_sent=false
-last_soc=26
-ever_low_batt=false
+mode=low_batt
+solar_on_sent=false
+solar_off_sent=true
+last_soc=25
+ever_low_batt=true
