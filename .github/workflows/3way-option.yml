@@ -8,6 +8,16 @@ jobs:
   handle_soc:
     runs-on: ubuntu-latest
     steps:
+      - name: ตรวจสอบ lock
+        run: |
+          LOCK_FILE="solar_state.lock"
+          if [ -f "$LOCK_FILE" ]; then
+            echo "🔒 Workflow กำลังทำงานอยู่ → ข้าม"
+            exit 0
+          fi
+          touch "$LOCK_FILE"
+          echo "✅ สร้าง lock แล้ว"
+
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -176,26 +186,23 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
           EVER_LOW_BATT: ${{ steps.check_mode.outputs.ever_low_batt }}
         run: |
-          # กำหนดสถานะการส่งคำสั่ง
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
           elif [ "$SEND_SOLAR_OFF" = "true" ]; then
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
-          else
+                    else
             SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2)
             SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           fi
 
-          # เขียนไฟล์สถานะใหม่
           echo "mode=$NEW_MODE" > solar_state.txt
           echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           echo "last_soc=$SOC" >> solar_state.txt
           echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
 
-          # Commit & Push ถ้ามีการเปลี่ยนแปลง
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add solar_state.txt
@@ -203,3 +210,8 @@ jobs:
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git push
           echo "✅ อัปเดตสถานะและ push สำเร็จ"
+
+      - name: ลบ lock หลังทำงานเสร็จ
+        run: |
+          rm -f solar_state.lock
+          echo "✅ ลบ lock แล้ว"
