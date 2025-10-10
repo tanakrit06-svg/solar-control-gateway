@@ -1,5 +1,1 @@
-mode=
-solar_on_sent=
-solar_off_sent=
-last_soc=47
-ever_low_batt=
+
