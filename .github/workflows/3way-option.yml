@@ -19,10 +19,10 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
         run: |
           INIT_REQUIRED="false"
+          SOC_CHANGED="true"
 
           if [ ! -f solar_state.txt ] || [ ! -s solar_state.txt ]; then
             echo "⚠️ solar_state.txt ไม่พบหรือว่าง → สร้างสถานะเริ่มต้นจาก SOC=$SOC"
-
             if [ "$SOC" -le 25 ]; then
               MODE="low_batt"
               SOLAR_ON_SENT="false"
@@ -42,13 +42,11 @@ jobs:
                 --fail --silent --show-error
               echo "✅ Sheet 2: solar_on sent"
             fi
-
             LAST_SOC="$SOC"
             echo "mode=$MODE" > solar_state.txt
             echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
             echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
             echo "last_soc=$LAST_SOC" >> solar_state.txt
-
             INIT_REQUIRED="true"
           fi
 
@@ -57,11 +55,16 @@ jobs:
           SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2 || echo "false")
           LAST_SOC=$(grep '^last_soc=' solar_state.txt | cut -d '=' -f2 || echo "")
 
+          if [ "$SOC" = "$LAST_SOC" ]; then
+            SOC_CHANGED="false"
+          fi
+
           echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "solar_on_sent=$SOLAR_ON_SENT" >> $GITHUB_OUTPUT
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> $GITHUB_OUTPUT
           echo "last_soc=$LAST_SOC" >> $GITHUB_OUTPUT
           echo "init_required=$INIT_REQUIRED" >> $GITHUB_OUTPUT
+          echo "soc_changed=$SOC_CHANGED" >> $GITHUB_OUTPUT
 
       - name: ตรวจสอบและเปลี่ยน Mode
         id: check_mode
@@ -72,6 +75,7 @@ jobs:
           SOLAR_OFF_SENT: ${{ steps.read_state.outputs.solar_off_sent }}
           LAST_SOC: ${{ steps.read_state.outputs.last_soc }}
           INIT_REQUIRED: ${{ steps.read_state.outputs.init_required }}
+          SOC_CHANGED: ${{ steps.read_state.outputs.soc_changed }}
         run: |
           if [ "$INIT_REQUIRED" = "true" ]; then
             echo "✅ ข้ามการตรวจสอบเพราะเพิ่งสร้างสถานะเริ่มต้น"
@@ -83,16 +87,22 @@ jobs:
             exit 0
           fi
 
+          if [ "$SOC_CHANGED" != "true" ]; then
+            echo "✅ SOC ไม่เปลี่ยน → ข้ามทุกขั้นตอน"
+            echo "skip_sheet1=true" >> $GITHUB_OUTPUT
+            echo "send_solar_on=false" >> $GITHUB_OUTPUT
+            echo "send_solar_off=false" >> $GITHUB_OUTPUT
+            echo "event_text=No_Change" >> $GITHUB_OUTPUT
+            echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           CURRENT_MODE=${CURRENT_MODE:-normal}
           NEW_MODE=$CURRENT_MODE
           EVENT_TEXT=""
           SEND_SOLAR_ON="false"
           SEND_SOLAR_OFF="false"
           SKIP_SHEET1="false"
-
-          if [ "$SOC" = "$LAST_SOC" ]; then
-            SKIP_SHEET1="true"
-          fi
 
           if [ "$CURRENT_MODE" = "normal" ]; then
             if [ "$SOC" -le 25 ]; then
@@ -121,7 +131,6 @@ jobs:
           if [ "$SOLAR_ON_SENT" = "false" ] && [ "$NEW_MODE" = "normal" ]; then
             SEND_SOLAR_ON="true"
           fi
-
           if [ "$SOLAR_OFF_SENT" = "false" ] && [ "$NEW_MODE" = "low_batt" ]; then
             SEND_SOLAR_OFF="true"
           fi
