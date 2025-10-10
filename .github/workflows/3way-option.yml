@@ -91,15 +91,22 @@ jobs:
           if [ "$FIRST_TIME" = "true" ]; then
             if [ "$SOC" -le 25 ]; then
               EVENT_TEXT="Low_Batt"
+              SEND_SOLAR_OFF="true"
+              NEW_MODE="low_batt"
+              EVER_LOW_BATT_NEW="true"
             else
               EVENT_TEXT="Normal_Batt"
+              SEND_SOLAR_ON="true"
+              NEW_MODE="normal"
+              EVER_LOW_BATT_NEW="false"
             fi
+
             echo "skip_sheet1=false" >> $GITHUB_OUTPUT
-            echo "send_solar_on=false" >> $GITHUB_OUTPUT
-            echo "send_solar_off=false" >> $GITHUB_OUTPUT
+            echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
+            echo "send_solar_off=$SEND_SOLAR_OFF" >> $GITHUB_OUTPUT
             echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
-            echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
-            echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
+            echo "mode=$NEW_MODE" >> $GITHUB_OUTPUT
+            echo "ever_low_batt=$EVER_LOW_BATT_NEW" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -169,6 +176,7 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
           EVER_LOW_BATT: ${{ steps.check_mode.outputs.ever_low_batt }}
         run: |
+          # กำหนดสถานะการส่งคำสั่ง
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
@@ -180,15 +188,14 @@ jobs:
             SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           fi
 
-          echo "mode=$NEW_MODE" > solar_state
-                    echo "mode=$NEW_MODE" > solar_state.txt
+          # เขียนไฟล์สถานะใหม่
+          echo "mode=$NEW_MODE" > solar_state.txt
           echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           echo "last_soc=$SOC" >> solar_state.txt
           echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
 
-      - name: Commit & Push
-        run: |
+          # Commit & Push ถ้ามีการเปลี่ยนแปลง
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add solar_state.txt
