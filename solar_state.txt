@@ -1,5 +1,5 @@
 mode=normal
 solar_on_sent=true
 solar_off_sent=false
-last_soc=47
+last_soc=48
 ever_low_batt=false
