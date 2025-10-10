@@ -135,7 +135,10 @@ jobs:
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
             EVER_LOW_BATT_NEW="true"
-            SEND_SOLAR_OFF="true"
+
+            if [ "$SOLAR_OFF_SENT" = "false" ]; then
+              SEND_SOLAR_OFF="true"
+            fi
           elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 35 ]; then
             EVENT_TEXT="Low_Batt"
           else
@@ -189,10 +192,10 @@ jobs:
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
-          elif [ "$SEND_SOLAR_OFF" = "true" ]; then
+                    elif [ "$SEND_SOLAR_OFF" = "true" ]; then
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
-                    else
+          else
             SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2)
             SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           fi
