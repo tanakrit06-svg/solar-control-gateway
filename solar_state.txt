@@ -1,4 +1,4 @@
 mode=low_batt
 solar_on_sent=false
 solar_off_sent=true
-last_soc=28
+last_soc=29
