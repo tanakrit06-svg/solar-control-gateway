@@ -1,1 +1,5 @@
-
+mode=normal
+solar_on_sent=
+solar_off_sent=
+last_soc=44
+ever_low_batt=
