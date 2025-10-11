@@ -52,38 +52,31 @@ jobs:
           EVER_LOW_BATT=$(grep '^ever_low_batt=' solar_state.txt | cut -d '=' -f2)
           STATUS=$(grep '^status=' solar_state.txt | cut -d '=' -f2)
 
-          if [ -z "$MODE" ] || [ -z "$SOLAR_ON_SENT" ] || [ -z "$SOLAR_OFF_SENT" ] || [ -z "$LAST_SOC" ] || [ -z "$EVER_LOW_BATT" ] || [ -z "$STATUS" ]; then
+          [ -z "$MODE" ] && MODE="normal"
+          [ -z "$SOLAR_ON_SENT" ] && SOLAR_ON_SENT="false"
+          [ -z "$SOLAR_OFF_SENT" ] && SOLAR_OFF_SENT="false"
+          [ -z "$LAST_SOC" ] && LAST_SOC="$SOC"
+          [ -z "$EVER_LOW_BATT" ] && EVER_LOW_BATT="false"
+          [ -z "$STATUS" ] && STATUS="standby"
+
+          if ! grep -q '^mode=' solar_state.txt || ! grep -q '^status=' solar_state.txt; then
             echo "⚠️ ข้อมูลไม่ครบ → สร้างใหม่"
             FIRST_TIME="true"
-
-            if [ "$SOC" -le 25 ]; then
-              MODE="low_batt"
-              EVER_LOW_BATT="true"
-            else
-              MODE="normal"
-              EVER_LOW_BATT="false"
-            fi
-
-            SOLAR_ON_SENT="false"
-            SOLAR_OFF_SENT="false"
-            LAST_SOC="$SOC"
-            STATUS="standby"
-
-            echo "mode=$MODE" > solar_state.txt
-            echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
-            echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
-            echo "last_soc=$LAST_SOC" >> solar_state.txt
-            echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
-            echo "status=$STATUS" >> solar_state.txt
           fi
 
-          STATUS=$(grep '^status=' solar_state.txt | cut -d '=' -f2)
           if [ "$STATUS" != "standby" ]; then
             echo "⚠️ กำลังทำงานอยู่ → ข้ามทั้งหมด"
             exit 0
           fi
 
-          sed -i 's/^status=.*/status=running/' solar_state.txt
+          STATUS="running"
+
+          echo "mode=$MODE" > solar_state.txt
+          echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
+          echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
+          echo "last_soc=$SOC" >> solar_state.txt
+          echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
+          echo "status=$STATUS" >> solar_state.txt
 
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
@@ -159,7 +152,6 @@ jobs:
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
             EVER_LOW_BATT_NEW="true"
-
             if [ "$SOLAR_OFF_SENT" = "false" ]; then
               SEND_SOLAR_OFF="true"
             fi
@@ -224,12 +216,17 @@ jobs:
             SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           fi
 
-          echo "mode=$NEW_MODE" > solar_state.txt
+          MODE="$NEW_MODE"
+          LAST_SOC="$SOC"
+          EVER_LOW_BATT="$EVER_LOW_BATT"
+          STATUS="standby"
+
+          echo "mode=$MODE" > solar_state.txt
           echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
-          echo "last_soc=$SOC" >> solar_state.txt
+          echo "last_soc=$LAST_SOC" >> solar_state.txt
           echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
-          echo "status=standby" >> solar_state.txt
+          echo "status=$STATUS" >> solar_state.txt
 
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
