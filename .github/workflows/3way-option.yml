@@ -11,7 +11,7 @@ jobs:
       - name: Log UUID
         run: |
           echo "🆔 UUID from ESP: ${{ github.event.client_payload.uuid }}"
-          echo "📥 SOC received: ${{ github.event.client_payload.soc }}"
+          echo "🔋 SOC received: ${{ github.event.client_payload.soc }}"
 
       - name: ตรวจสอบ lock
         run: |
@@ -219,7 +219,7 @@ jobs:
           git push
           echo "✅ อัปเดตสถานะและ push สำเร็จ"
 
-      - name: ลบ lock หลังทำงานเสร็จ
+      - name: ลบ lock หลังงานเสร็จ
         run: |
           rm -f solar_state.lock
           echo "✅ ลบ lock แล้ว"
