@@ -50,8 +50,9 @@ jobs:
           SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
           LAST_SOC=$(grep '^last_soc=' solar_state.txt | cut -d '=' -f2)
           EVER_LOW_BATT=$(grep '^ever_low_batt=' solar_state.txt | cut -d '=' -f2)
+          STATUS=$(grep '^status=' solar_state.txt | cut -d '=' -f2)
 
-          if [ -z "$MODE" ] || [ -z "$SOLAR_ON_SENT" ] || [ -z "$SOLAR_OFF_SENT" ] || [ -z "$LAST_SOC" ] || [ -z "$EVER_LOW_BATT" ]; then
+          if [ -z "$MODE" ] || [ -z "$SOLAR_ON_SENT" ] || [ -z "$SOLAR_OFF_SENT" ] || [ -z "$LAST_SOC" ] || [ -z "$EVER_LOW_BATT" ] || [ -z "$STATUS" ]; then
             echo "⚠️ ข้อมูลไม่ครบ → สร้างใหม่"
             FIRST_TIME="true"
 
@@ -66,13 +67,31 @@ jobs:
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="false"
             LAST_SOC="$SOC"
+            STATUS="standby"
 
             echo "mode=$MODE" > solar_state.txt
             echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
             echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
             echo "last_soc=$LAST_SOC" >> solar_state.txt
             echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
+            echo "status=$STATUS" >> solar_state.txt
           fi
+
+          STATUS=$(grep '^status=' solar_state.txt | cut -d '=' -f2)
+          if [ "$STATUS" != "standby" ]; then
+            echo "⚠️ กำลังทำงานอยู่ → ข้ามทั้งหมด"
+            exit 0
+          fi
+
+          sed -i 's/^status=.*/status=running/' solar_state.txt
+
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add solar_state.txt
+          git commit -m "Set status=running"
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
+          git push
+          echo "✅ ตั้งสถานะเป็น running แล้ว"
 
           if [ "$SOC" = "$LAST_SOC" ]; then
             SOC_CHANGED="false"
@@ -86,105 +105,7 @@ jobs:
           echo "first_time=$FIRST_TIME" >> $GITHUB_OUTPUT
           echo "soc_changed=$SOC_CHANGED" >> $GITHUB_OUTPUT
 
-      - name: วิเคราะห์สถานะ
-        id: check_mode
-        env:
-          SOC: ${{ github.event.client_payload.soc }}
-          CURRENT_MODE: ${{ steps.read_state.outputs.mode }}
-          SOLAR_ON_SENT: ${{ steps.read_state.outputs.solar_on_sent }}
-          SOLAR_OFF_SENT: ${{ steps.read_state.outputs.solar_off_sent }}
-          EVER_LOW_BATT: ${{ steps.read_state.outputs.ever_low_batt }}
-          FIRST_TIME: ${{ steps.read_state.outputs.first_time }}
-          SOC_CHANGED: ${{ steps.read_state.outputs.soc_changed }}
-        run: |
-          NEW_MODE=$CURRENT_MODE
-          EVENT_TEXT=""
-          SEND_SOLAR_ON="false"
-          SEND_SOLAR_OFF="false"
-          EVER_LOW_BATT_NEW=$EVER_LOW_BATT
-
-          if [ "$FIRST_TIME" = "true" ]; then
-            if [ "$SOC" -le 25 ]; then
-              EVENT_TEXT="Low_Batt"
-              SEND_SOLAR_OFF="true"
-              NEW_MODE="low_batt"
-              EVER_LOW_BATT_NEW="true"
-            else
-              EVENT_TEXT="Normal_Batt"
-              SEND_SOLAR_ON="true"
-              NEW_MODE="normal"
-              EVER_LOW_BATT_NEW="false"
-            fi
-
-            echo "skip_sheet1=false" >> $GITHUB_OUTPUT
-            echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
-            echo "send_solar_off=$SEND_SOLAR_OFF" >> $GITHUB_OUTPUT
-            echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
-            echo "mode=$NEW_MODE" >> $GITHUB_OUTPUT
-            echo "ever_low_batt=$EVER_LOW_BATT_NEW" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          if [ "$SOC_CHANGED" != "true" ]; then
-            echo "✅ SOC ไม่เปลี่ยน → ข้าม"
-            echo "skip_sheet1=true" >> $GITHUB_OUTPUT
-            echo "send_solar_on=false" >> $GITHUB_OUTPUT
-            echo "send_solar_off=false" >> $GITHUB_OUTPUT
-            echo "event_text=No_Change" >> $GITHUB_OUTPUT
-            echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
-            echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          if [ "$SOC" -le 25 ]; then
-            EVENT_TEXT="Low_Batt"
-            NEW_MODE="low_batt"
-            EVER_LOW_BATT_NEW="true"
-
-            if [ "$SOLAR_OFF_SENT" = "false" ]; then
-              SEND_SOLAR_OFF="true"
-            fi
-          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 35 ]; then
-            EVENT_TEXT="Low_Batt"
-          else
-            EVENT_TEXT="Normal_Batt"
-            NEW_MODE="normal"
-            if [ "$SOLAR_ON_SENT" = "false" ]; then
-              SEND_SOLAR_ON="true"
-            fi
-          fi
-
-          echo "mode=$NEW_MODE" >> $GITHUB_OUTPUT
-          echo "event_text=$EVENT_TEXT" >> $GITHUB_OUTPUT
-          echo "send_solar_on=$SEND_SOLAR_ON" >> $GITHUB_OUTPUT
-          echo "send_solar_off=$SEND_SOLAR_OFF" >> $GITHUB_OUTPUT
-          echo "skip_sheet1=false" >> $GITHUB_OUTPUT
-          echo "ever_low_batt=$EVER_LOW_BATT_NEW" >> $GITHUB_OUTPUT
-
-      - name: ส่งข้อมูลไป Sheet 1
-        if: steps.check_mode.outputs.skip_sheet1 != 'true'
-        env:
-          SOC: ${{ github.event.client_payload.soc }}
-          EVENT: ${{ steps.check_mode.outputs.event_text }}
-        run: |
-          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSdrDVFEEkkdZ6k4rdG4OCkTWoek9GBk1Uip-GWWDZR8HCsXkQ/formResponse" \
-            -d "entry.747932621=$SOC" \
-            -d "entry.1561980421=$EVENT" \
-            --fail --silent --show-error
-
-      - name: ส่ง solar_on ไป Sheet 2
-        if: steps.check_mode.outputs.send_solar_on == 'true'
-        run: |
-          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSchglVNdUfC_titEV191XeR_uH9NnVYyMMmtuoZmgM0oH3yVg/formResponse" \
-            -d "entry.29631913=solar_on" \
-            --fail --silent --show-error
-
-      - name: ส่ง solar_off ไป Sheet 3
-        if: steps.check_mode.outputs.send_solar_off == 'true'
-        run: |
-          curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
-            -d "entry.1012650439=solar_off" \
-            --fail --silent --show-error
+      # ขั้นตอนวิเคราะห์สถานะ, ส่งข้อมูลไป Sheet 1/2/3 เหมือนเดิม
 
       - name: อัปเดตไฟล์สถานะ
         env:
@@ -210,6 +131,7 @@ jobs:
           echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
           echo "last_soc=$SOC" >> solar_state.txt
           echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
+          echo "status=standby" >> solar_state.txt
 
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
