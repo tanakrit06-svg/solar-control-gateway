@@ -8,6 +8,11 @@ jobs:
   handle_soc:
     runs-on: ubuntu-latest
     steps:
+      - name: Log UUID
+        run: |
+          echo "🆔 UUID from ESP: ${{ github.event.client_payload.uuid }}"
+          echo "📥 SOC received: ${{ github.event.client_payload.soc }}"
+
       - name: ตรวจสอบ lock
         run: |
           LOCK_FILE="solar_state.lock"
@@ -192,7 +197,7 @@ jobs:
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
-                    elif [ "$SEND_SOLAR_OFF" = "true" ]; then
+          elif [ "$SEND_SOLAR_OFF" = "true" ]; then
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
           else
