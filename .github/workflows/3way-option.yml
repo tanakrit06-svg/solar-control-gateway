@@ -13,16 +13,6 @@ jobs:
           echo "🆔 UUID from ESP: ${{ github.event.client_payload.uuid }}"
           echo "🔋 SOC received: ${{ github.event.client_payload.soc }}"
 
-      - name: ตรวจสอบ lock
-        run: |
-          LOCK_FILE="solar_state.lock"
-          if [ -f "$LOCK_FILE" ]; then
-            echo "🔒 Workflow กำลังทำงานอยู่ → ข้าม"
-            exit 0
-          fi
-          touch "$LOCK_FILE"
-          echo "✅ สร้าง lock แล้ว"
-
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -235,8 +225,3 @@ jobs:
           git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}
           git push
           echo "✅ อัปเดตสถานะและ push สำเร็จ"
-
-      - name: ลบ lock หลังงานเสร็จ
-        run: |
-          rm -f solar_state.lock
-          echo "✅ ลบ lock แล้ว"
