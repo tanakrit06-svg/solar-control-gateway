@@ -1,6 +1,6 @@
+mode=normal
 solar_on_sent=true
 solar_off_sent=false
-mode=
-last_soc=24
-ever_low_batt=
-status=standby
+last_soc=23
+ever_low_batt=false
+status=running
