@@ -136,7 +136,7 @@ jobs:
             echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
             echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
             exit 0
-          if
+          fi
           if [ "$SOC" -le 25 ]; then
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
