@@ -3,4 +3,4 @@ solar_on_sent=true
 solar_off_sent=false
 last_soc=63
 ever_low_batt=true
-status=standby
+status=running
