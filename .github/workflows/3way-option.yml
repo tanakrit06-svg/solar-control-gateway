@@ -255,3 +255,4 @@ jobs:
           git pull --rebase
           git push
           echo "✅ อัปเดตสถานะและ push สำเร็จ"
+
