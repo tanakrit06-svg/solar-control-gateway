@@ -136,8 +136,6 @@ jobs:
             echo "mode=$CURRENT_MODE" >> $GITHUB_OUTPUT
             echo "ever_low_batt=$EVER_LOW_BATT" >> $GITHUB_OUTPUT
             exit 0
-          fi
-
           if [ "$SOC" -le 25 ]; then
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
@@ -193,6 +191,7 @@ jobs:
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
             -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
+
       - name: อัปเดตไฟล์สถานะ
         env:
           NEW_MODE: ${{ steps.check_mode.outputs.mode }}
@@ -201,6 +200,15 @@ jobs:
           SOC: ${{ github.event.client_payload.soc }}
           EVER_LOW_BATT: ${{ steps.check_mode.outputs.ever_low_batt }}
         run: |
+          touch solar_state.txt
+
+          CURRENT_MODE=$(grep '^mode=' solar_state.txt | cut -d '=' -f2)
+          CURRENT_SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2)
+          CURRENT_SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
+          CURRENT_LAST_SOC=$(grep '^last_soc=' solar_state.txt | cut -d '=' -f2)
+          CURRENT_EVER_LOW_BATT=$(grep '^ever_low_batt=' solar_state.txt | cut -d '=' -f2)
+          CURRENT_STATUS=$(grep '^status=' solar_state.txt | cut -d '=' -f2)
+
           if [ "$SEND_SOLAR_ON" = "true" ]; then
             SOLAR_ON_SENT="true"
             SOLAR_OFF_SENT="false"
@@ -208,21 +216,33 @@ jobs:
             SOLAR_ON_SENT="false"
             SOLAR_OFF_SENT="true"
           else
-            SOLAR_ON_SENT=$(grep '^solar_on_sent=' solar_state.txt | cut -d '=' -f2)
-            SOLAR_OFF_SENT=$(grep '^solar_off_sent=' solar_state.txt | cut -d '=' -f2)
+            SOLAR_ON_SENT="$CURRENT_SOLAR_ON_SENT"
+            SOLAR_OFF_SENT="$CURRENT_SOLAR_OFF_SENT"
           fi
 
           MODE="$NEW_MODE"
           LAST_SOC="$SOC"
-          EVER_LOW_BATT="$EVER_LOW_BATT"
           STATUS="standby"
 
-          echo "mode=$MODE" > solar_state.txt
-          echo "solar_on_sent=$SOLAR_ON_SENT" >> solar_state.txt
-          echo "solar_off_sent=$SOLAR_OFF_SENT" >> solar_state.txt
-          echo "last_soc=$LAST_SOC" >> solar_state.txt
-          echo "ever_low_batt=$EVER_LOW_BATT" >> solar_state.txt
-          echo "status=$STATUS" >> solar_state.txt
+          update_line() {
+            KEY="$1"
+            NEW="$2"
+            CURRENT="$3"
+            if [ "$NEW" != "$CURRENT" ]; then
+              sed -i "/^$KEY=/d" solar_state.txt
+              echo "$KEY=$NEW" >> solar_state.txt
+              echo "🔄 อัปเดต $KEY: $CURRENT → $NEW"
+            else
+              echo "⏸ ไม่เปลี่ยน $KEY: $CURRENT"
+            fi
+          }
+
+          update_line "mode" "$MODE" "$CURRENT_MODE"
+          update_line "solar_on_sent" "$SOLAR_ON_SENT" "$CURRENT_SOLAR_ON_SENT"
+          update_line "solar_off_sent" "$SOLAR_OFF_SENT" "$CURRENT_SOLAR_OFF_SENT"
+          update_line "last_soc" "$LAST_SOC" "$CURRENT_LAST_SOC"
+          update_line "ever_low_batt" "$EVER_LOW_BATT" "$CURRENT_EVER_LOW_BATT"
+          update_line "status" "$STATUS" "$CURRENT_STATUS"
 
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
