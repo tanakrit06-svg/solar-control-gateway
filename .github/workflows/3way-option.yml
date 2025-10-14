@@ -145,6 +145,13 @@ jobs:
             if [ "$SOLAR_OFF_SENT" = "false" ]; then
               SEND_SOLAR_OFF="true"
             fi
+          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -ge 35 ]; then
+            EVENT_TEXT="Normal_Batt"
+            NEW_MODE="normal"
+            EVER_LOW_BATT_NEW="false"
+            if [ "$SOLAR_ON_SENT" = "false" ]; then
+              SEND_SOLAR_ON="true"
+            fi
           elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 35 ]; then
             EVENT_TEXT="Low_Batt"
           else
@@ -186,7 +193,6 @@ jobs:
           curl -X POST "https://docs.google.com/forms/d/e/1FAIpQLSfR4GihZk5nhFnJndejNVNji_5Mywbg3PIgZi3m3ZjQxGApQQ/formResponse" \
             -d "entry.1012650439=solar_off" \
             --fail --silent --show-error
-
       - name: อัปเดตไฟล์สถานะ
         env:
           NEW_MODE: ${{ steps.check_mode.outputs.mode }}
