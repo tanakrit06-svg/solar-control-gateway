@@ -107,7 +107,7 @@ jobs:
           EVER_LOW_BATT_NEW=$EVER_LOW_BATT
 
           if [ "$FIRST_TIME" = "true" ]; then
-            if [ "$SOC" -le 25 ]; then
+            if [ "$SOC" -le 15 ]; then
               EVENT_TEXT="Low_Batt"
               SEND_SOLAR_OFF="true"
               NEW_MODE="low_batt"
@@ -139,21 +139,21 @@ jobs:
             exit 0
           fi
 
-          if [ "$SOC" -le 25 ]; then
+          if [ "$SOC" -le 15 ]; then
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
             EVER_LOW_BATT_NEW="true"
             if [ "$SOLAR_OFF_SENT" = "false" ]; then
               SEND_SOLAR_OFF="true"
             fi
-          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -ge 35 ]; then
+          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -ge 25 ]; then
             EVENT_TEXT="Normal_Batt"
             NEW_MODE="normal"
             EVER_LOW_BATT_NEW="false"
             if [ "$SOLAR_ON_SENT" = "false" ]; then
               SEND_SOLAR_ON="true"
             fi
-          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 35 ]; then
+          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 25 ]; then
             EVENT_TEXT="Low_Batt"
           else
             EVENT_TEXT="Normal_Batt"
