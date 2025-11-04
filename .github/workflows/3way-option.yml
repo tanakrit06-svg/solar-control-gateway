@@ -8,6 +8,12 @@ jobs:
   handle_soc:
     runs-on: ubuntu-latest
     steps:
+      - name: กำหนดค่าคงที่
+        id: set_constants
+        run: |
+          echo "LOW_BATT_THRESHOLD=15" >> $GITHUB_ENV
+          echo "NORMAL_RECOVERY_THRESHOLD=25" >> $GITHUB_ENV
+
       - name: Log UUID
         run: |
           echo "🆔 UUID from ESP: ${{ github.event.client_payload.uuid }}"
@@ -107,7 +113,7 @@ jobs:
           EVER_LOW_BATT_NEW=$EVER_LOW_BATT
 
           if [ "$FIRST_TIME" = "true" ]; then
-            if [ "$SOC" -le 15 ]; then
+            if [ "$SOC" -le "$LOW_BATT_THRESHOLD" ]; then
               EVENT_TEXT="Low_Batt"
               SEND_SOLAR_OFF="true"
               NEW_MODE="low_batt"
@@ -139,21 +145,21 @@ jobs:
             exit 0
           fi
 
-          if [ "$SOC" -le 15 ]; then
+          if [ "$SOC" -le "$LOW_BATT_THRESHOLD" ]; then
             EVENT_TEXT="Low_Batt"
             NEW_MODE="low_batt"
             EVER_LOW_BATT_NEW="true"
             if [ "$SOLAR_OFF_SENT" = "false" ]; then
               SEND_SOLAR_OFF="true"
             fi
-          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -ge 25 ]; then
+          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -ge "$NORMAL_RECOVERY_THRESHOLD" ]; then
             EVENT_TEXT="Normal_Batt"
             NEW_MODE="normal"
             EVER_LOW_BATT_NEW="false"
             if [ "$SOLAR_ON_SENT" = "false" ]; then
               SEND_SOLAR_ON="true"
             fi
-          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt 25 ]; then
+          elif [ "$EVER_LOW_BATT" = "true" ] && [ "$SOC" -lt "$NORMAL_RECOVERY_THRESHOLD" ]; then
             EVENT_TEXT="Low_Batt"
           else
             EVENT_TEXT="Normal_Batt"
@@ -255,4 +261,3 @@ jobs:
           git pull --rebase
           git push
           echo "✅ อัปเดตสถานะและ push สำเร็จ"
-
