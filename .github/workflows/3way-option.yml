@@ -12,7 +12,7 @@ jobs:
         id: set_constants
         run: |
           echo "LOW_BATT_THRESHOLD=15" >> $GITHUB_ENV
-          echo "NORMAL_RECOVERY_THRESHOLD=25" >> $GITHUB_ENV
+          echo "NORMAL_RECOVERY_THRESHOLD=20" >> $GITHUB_ENV
 
       - name: Log UUID
         run: |
